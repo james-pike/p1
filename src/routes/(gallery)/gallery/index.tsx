@@ -1,31 +1,31 @@
-// src/components/Classes.tsx
+// src/components/Gallery.tsx
 import { component$, useSignal, useVisibleTask$, $, useStore } from '@builder.io/qwik';
 import { routeLoader$, server$ } from '@builder.io/qwik-city';
-import { tursoClient, getClasses, type Class } from '~/lib/turso';
+import { tursoClient, getGalleryImages, type GalleryImage } from '~/lib/turso';
 
-export const useClassesLoader = routeLoader$(async (event) => {
+export const useGalleryImagesLoader = routeLoader$(async (event) => {
   const client = tursoClient(event);
-  return await getClasses(await client);
+  return await getGalleryImages(await client);
 });
 
 // Server actions for CRUD operations
-export const createClassAction = server$(async function(name: string, description: string, url: string, image: string, isActive: number) {
-  console.log('createClassAction called with:', { name, description, url, image: `base64(...${image.slice(-20)})`, isActive });
-  const response = await fetch(`${this.url.origin}/api/classes`, {
+export const createGalleryImageAction = server$(async function(image: string, filename: string) {
+  console.log('createGalleryImageAction called with:', { filename, image: `base64(...${image.slice(-20)})` });
+  const response = await fetch(`${this.url.origin}/api/gallery_images`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, description, url, image, isActive }),
+    body: JSON.stringify({ image, filename }),
   });
   console.log('Create API response status:', response.status, 'ok:', response.ok);
   return { ok: response.ok, status: response.status };
 });
 
-export const updateClassAction = server$(async function(id: number, name: string, description: string, url: string, image: string, isActive: number) {
-  console.log('updateClassAction called with:', { id, name, description, url, image: `base64(...${image.slice(-20)})`, isActive });
-  const response = await fetch(`${this.url.origin}/api/classes`, {
+export const updateGalleryImageAction = server$(async function(id: number, image: string, filename: string) {
+  console.log('updateGalleryImageAction called with:', { id, filename, image: `base64(...${image.slice(-20)})` });
+  const response = await fetch(`${this.url.origin}/api/gallery_images`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, name, description, url, image, isActive }),
+    body: JSON.stringify({ id, image, filename }),
   });
   console.log('Update API response status:', response.status, 'ok:', response.ok);
   const responseBody = await response.json().catch(() => ({}));
@@ -33,9 +33,9 @@ export const updateClassAction = server$(async function(id: number, name: string
   return { ok: response.ok, status: response.status, data: responseBody };
 });
 
-export const deleteClassAction = server$(async function(id: number) {
-  console.log('deleteClassAction called with:', { id });
-  const response = await fetch(`${this.url.origin}/api/classes`, {
+export const deleteGalleryImageAction = server$(async function(id: number) {
+  console.log('deleteGalleryImageAction called with:', { id });
+  const response = await fetch(`${this.url.origin}/api/gallery_images`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id }),
@@ -55,8 +55,8 @@ const fileToBase64 = $(async (file: File): Promise<string> => {
 });
 
 export default component$(() => {
-  const loaderData = useClassesLoader();
-  const classes = useSignal<Class[]>([]);
+  const loaderData = useGalleryImagesLoader();
+  const images = useSignal<GalleryImage[]>([]);
   const openItem = useSignal<number | null>(null);
   const editingItem = useSignal<number | null>(null);
   const showAddForm = useSignal(false);
@@ -66,82 +66,64 @@ export default component$(() => {
   const editImagePreview = useSignal<string>('');
 
   const editForm = useStore({
-    name: '',
-    description: '',
-    url: '',
     image: '',
-    isActive: 0,
+    filename: '',
   });
 
   const newForm = useStore({
-    name: '',
-    description: '',
-    url: '',
     image: '',
-    isActive: 0,
+    filename: '',
   });
 
   useVisibleTask$(() => {
-    classes.value = loaderData.value;
-    if (classes.value.length > 0) openItem.value = classes.value[0].id ?? null;
+    images.value = loaderData.value;
+    if (images.value.length > 0) openItem.value = images.value[0].id ?? null;
   });
 
   const toggle = $((id: number) => {
     openItem.value = openItem.value === id ? null : id;
   });
 
-  const startEdit = $((classItem: Class) => {
-    editingItem.value = classItem.id!;
-    editForm.name = classItem.name;
-    editForm.description = classItem.description;
-    editForm.url = classItem.url;
-    editForm.image = classItem.image;
-    editForm.isActive = classItem.isActive;
-    editImagePreview.value = classItem.image;
+  const startEdit = $((imageItem: GalleryImage) => {
+    editingItem.value = imageItem.id!;
+    editForm.image = imageItem.image;
+    editForm.filename = imageItem.filename;
+    editImagePreview.value = imageItem.image;
   });
 
   const cancelEdit = $(() => {
     editingItem.value = null;
-    editForm.name = '';
-    editForm.description = '';
-    editForm.url = '';
     editForm.image = '';
-    editForm.isActive = 0;
+    editForm.filename = '';
     editImagePreview.value = '';
     successMessage.value = '';
     errorMessage.value = '';
   });
 
   const saveEdit = $(async () => {
-    console.log('saveEdit called with:', { editingItem: editingItem.value, ...editForm, image: `base64(...${editForm.image.slice(-20)})` });
+    console.log('saveEdit called with:', { editingItem: editingItem.value, filename: editForm.filename, image: `base64(...${editForm.image.slice(-20)})` });
     successMessage.value = '';
 
-    if (editForm.name && editForm.description && editForm.url && editForm.image && editForm.isActive !== undefined) {
-      console.log('Calling updateClassAction...');
+    if (editForm.image && editForm.filename) {
+      console.log('Calling updateGalleryImageAction...');
       try {
-        const result = await updateClassAction(
+        const result = await updateGalleryImageAction(
           editingItem.value!,
-          editForm.name,
-          editForm.description,
-          editForm.url,
           editForm.image,
-          editForm.isActive
+          editForm.filename
         );
-        console.log('updateClassAction result:', result);
+        console.log('updateGalleryImageAction result:', result);
 
         // Update local state regardless of API response, since DB is updating
-        classes.value = classes.value.map((item) =>
+        images.value = images.value.map((item) =>
           item.id === editingItem.value
-            ? { ...item, name: editForm.name, description: editForm.description, url: editForm.url, image: editForm.image, isActive: editForm.isActive }
+            ? { ...item, image: editForm.image, filename: editForm.filename }
             : item
         );
-        successMessage.value = 'Class updated successfully!';
+        successMessage.value = 'Image updated successfully!';
         editingItem.value = null;
-        editForm.name = '';
-        editForm.description = '';
-        editForm.url = '';
         editForm.image = '';
-        editForm.isActive = 0;
+        editForm.filename = '';
         editImagePreview.value = '';
         setTimeout(() => {
           successMessage.value = '';
@@ -151,37 +133,37 @@ export default component$(() => {
           console.warn('Update API returned non-success response:', result.status, result.data);
         }
       } catch (error) {
-        console.error('Error in updateClassAction:', error);
+        console.error('Error in updateGalleryImageAction:', error);
         // Still show success since DB is updating
-        successMessage.value = 'Class updated successfully!';
+        successMessage.value = 'Image updated successfully!';
         setTimeout(() => {
           successMessage.value = '';
         }, 3000);
       }
     } else {
       console.log('Missing required fields:', { ...editForm });
-      errorMessage.value = 'Please fill in all required fields.';
+      errorMessage.value = 'Please provide an image and filename.';
       setTimeout(() => {
         errorMessage.value = '';
       }, 5000);
     }
   });
 
-  const deleteClass = $(async (id: number) => {
-    if (confirm('Are you sure you want to delete this class?')) {
+  const deleteImage = $(async (id: number) => {
+    if (confirm('Are you sure you want to delete this image?')) {
       successMessage.value = '';
       errorMessage.value = '';
-      const result = await deleteClassAction(id);
-      console.log('deleteClassAction result:', result);
+      const result = await deleteGalleryImageAction(id);
+      console.log('deleteGalleryImageAction result:', result);
       if (result.ok && result.status === 200) {
-        classes.value = classes.value.filter((item) => item.id !== id);
+        images.value = images.value.filter((item) => item.id !== id);
         if (openItem.value === id) openItem.value = null;
-        successMessage.value = 'Class deleted successfully!';
+        successMessage.value = 'Image deleted successfully!';
         setTimeout(() => {
           successMessage.value = '';
         }, 3000);
       } else {
-        errorMessage.value = 'Failed to delete class. Please try again.';
+        errorMessage.value = 'Failed to delete image. Please try again.';
         setTimeout(() => {
           errorMessage.value = '';
         }, 5000);
@@ -189,26 +171,26 @@ export default component$(() => {
     }
   });
 
-  const addClass = $(async () => {
+  const addImage = $(async () => {
     successMessage.value = '';
     errorMessage.value = '';
-    if (newForm.name && newForm.description && newForm.url && newForm.image && newForm.isActive !== undefined) {
-      const result = await createClassAction(newForm.name, newForm.description, newForm.url, newForm.image, newForm.isActive);
-      console.log('createClassAction result:', result);
+    if (newForm.image && newForm.filename) {
+      const result = await createGalleryImageAction(newForm.image, newForm.filename);
+      console.log('createGalleryImageAction result:', result);
       if (result.ok && result.status === 201) {
-        successMessage.value = 'Class added successfully!';
+        successMessage.value = 'Image added successfully!';
         setTimeout(() => {
           successMessage.value = '';
         }, 3000);
         window.location.reload(); // Reload to fetch new data
       } else {
-        errorMessage.value = 'Failed to add class. Please try again.';
+        errorMessage.value = 'Failed to add image. Please try again.';
         setTimeout(() => {
           errorMessage.value = '';
         }, 5000);
       }
     } else {
-      errorMessage.value = 'Please fill in all required fields.';
+      errorMessage.value = 'Please provide an image and filename.';
       setTimeout(() => {
         errorMessage.value = '';
       }, 5000);
@@ -217,17 +199,14 @@ export default component$(() => {
 
   const cancelAdd = $(() => {
     showAddForm.value = false;
-    newForm.name = '';
-    newForm.description = '';
-    newForm.url = '';
     newForm.image = '';
-    newForm.isActive = 0;
+    newForm.filename = '';
     newImagePreview.value = '';
     successMessage.value = '';
     errorMessage.value = '';
   });
 
-  // Handle file input for new class
+  // Handle file input for new image
   const handleNewImage = $(async (e: Event) => {
     const input = e.target as HTMLInputElement;
     if (input.files && input.files[0]) {
@@ -242,6 +221,7 @@ export default component$(() => {
         }
         const base64 = await fileToBase64(file);
         newForm.image = base64;
+        newForm.filename = file.name;
         newImagePreview.value = base64;
       } catch (error) {
         console.error('Error converting file to base64:', error);
@@ -253,7 +233,7 @@ export default component$(() => {
     }
   });
 
-  // Handle file input for edit class
+  // Handle file input for edit image
   const handleEditImage = $(async (e: Event) => {
     const input = e.target as HTMLInputElement;
     if (input.files && input.files[0]) {
@@ -268,6 +248,7 @@ export default component$(() => {
         }
         const base64 = await fileToBase64(file);
         editForm.image = base64;
+        editForm.filename = file.name;
         editImagePreview.value = base64;
       } catch (error) {
         console.error('Error converting file to base64:', error);
@@ -280,14 +261,14 @@ export default component$(() => {
   });
 
   return (
-    <div class="class-container max-w-4xl mx-auto p-6">
+    <div class="gallery-container max-w-4xl mx-auto p-6">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold">Classes</h2>
+        <h2 class="text-2xl font-bold">Gallery Images</h2>
         <button
           onClick$={() => showAddForm.value = true}
           class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
         >
-          Add Class
+          Add Image
         </button>
       </div>
 
@@ -305,31 +286,11 @@ export default component$(() => {
         </div>
       )}
 
-      {/* Add new class form */}
+      {/* Add new image form */}
       {showAddForm.value && (
         <div class="bg-gray-50 p-4 rounded-lg mb-6">
-          <h3 class="font-semibold mb-3">Add New Class</h3>
+          <h3 class="font-semibold mb-3">Add New Image</h3>
           <div class="space-y-3">
-            <input
-              type="text"
-              placeholder="Name"
-              value={newForm.name}
-              onInput$={(e) => newForm.name = (e.target as HTMLInputElement).value}
-              class="w-full p-2 border rounded"
-            />
-            <textarea
-              placeholder="Description"
-              value={newForm.description}
-              onInput$={(e) => newForm.description = (e.target as HTMLTextAreaElement).value}
-              class="w-full p-2 border rounded h-24"
-            />
-            <input
-              type="text"
-              placeholder="URL"
-              value={newForm.url}
-              onInput$={(e) => newForm.url = (e.target as HTMLInputElement).value}
-              class="w-full p-2 border rounded"
-            />
             <div>
               <label class="block text-sm font-medium text-gray-700">Image</label>
               <input
@@ -344,18 +305,16 @@ export default component$(() => {
                 </div>
               )}
             </div>
-            <label class="flex items-center">
-              <input
-                type="checkbox"
-                checked={newForm.isActive === 1}
-                onChange$={(e) => newForm.isActive = (e.target as HTMLInputElement).checked ? 1 : 0}
-                class="mr-2"
-              />
-              Active
-            </label>
+            <input
+              type="text"
+              placeholder="Filename"
+              value={newForm.filename}
+              onInput$={(e) => newForm.filename = (e.target as HTMLInputElement).value}
+              class="w-full p-2 border rounded"
+            />
             <div class="flex gap-2">
               <button
-                onClick$={addClass}
+                onClick$={addImage}
                 class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
               >
                 Save
@@ -371,33 +330,13 @@ export default component$(() => {
         </div>
       )}
 
-      {/* Class List */}
-      <div class="class-grid space-y-4">
-        {classes.value.map((classItem) => (
-          <div key={classItem.id} class="class-item border rounded-lg p-4 bg-white shadow-sm">
-            {editingItem.value === classItem.id ? (
+      {/* Image List */}
+      <div class="gallery-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {images.value.map((imageItem) => (
+          <div key={imageItem.id} class="gallery-item border rounded-lg p-4 bg-white shadow-sm">
+            {editingItem.value === imageItem.id ? (
               /* Edit mode */
               <div class="space-y-3">
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onInput$={(e) => editForm.name = (e.target as HTMLInputElement).value}
-                  class="w-full p-2 border rounded font-semibold"
-                  placeholder="Name"
-                />
-                <textarea
-                  value={editForm.description}
-                  onInput$={(e) => editForm.description = (e.target as HTMLTextAreaElement).value}
-                  class="w-full p-2 border rounded h-24"
-                  placeholder="Description"
-                />
-                <input
-                  type="text"
-                  value={editForm.url}
-                  onInput$={(e) => editForm.url = (e.target as HTMLInputElement).value}
-                  class="w-full p-2 border rounded"
-                  placeholder="URL"
-                />
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Image</label>
                   <input
@@ -412,15 +351,13 @@ export default component$(() => {
                     </div>
                   )}
                 </div>
-                <label class="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isActive === 1}
-                    onChange$={(e) => editForm.isActive = (e.target as HTMLInputElement).checked ? 1 : 0}
-                    class="mr-2"
-                  />
-                  Active
-                </label>
+                <input
+                  type="text"
+                  value={editForm.filename}
+                  onInput$={(e) => editForm.filename = (e.target as HTMLInputElement).value}
+                  class="w-full p-2 border rounded"
+                  placeholder="Filename"
+                />
                 <div class="flex gap-2">
                   <button
                     onClick$={saveEdit}
@@ -441,25 +378,24 @@ export default component$(() => {
               <>
                 <div class="flex justify-between items-start">
                   <button
-                    onClick$={() => toggle(classItem.id!)}
+                    onClick$={() => toggle(imageItem.id!)}
                     class="flex-1 text-left"
                   >
                     <div class="space-y-1">
-                      <h3 class="font-bold text-lg hover:text-blue-600">{classItem.name}</h3>
-                      <p class="text-gray-600 text-sm">URL: {classItem.url}</p>
-                      <p class="text-gray-600 text-sm">Active: {classItem.isActive ? 'Yes' : 'No'}</p>
+                      <h3 class="font-bold text-lg hover:text-blue-600">{imageItem.filename}</h3>
+                      <img src={imageItem.image} alt={imageItem.filename} class="w-24 h-24 object-cover rounded" />
                     </div>
                   </button>
                   <div class="flex gap-2 ml-4">
                     <button
-                      onClick$={() => startEdit(classItem)}
+                      onClick$={() => startEdit(imageItem)}
                       class="text-blue-500 hover:text-blue-700 text-sm px-2 py-1"
                       title="Edit"
                     >
                       Edit
                     </button>
                     <button
-                      onClick$={() => deleteClass(classItem.id!)}
+                      onClick$={() => deleteImage(imageItem.id!)}
                       class="text-red-500 hover:text-red-700 text-sm px-2 py-1"
                       title="Delete"
                     >
@@ -467,14 +403,9 @@ export default component$(() => {
                     </button>
                   </div>
                 </div>
-                {openItem.value === classItem.id && (
-                  <div class="class-details mt-3 pt-3 border-t">
-                    <p class="text-gray-700">{classItem.description}</p>
-                    {classItem.image && (
-                      <div class="mt-2">
-                        <img src={classItem.image} alt={classItem.name} class="max-w-xs h-auto rounded" />
-                      </div>
-                    )}
+                {openItem.value === imageItem.id && (
+                  <div class="gallery-details mt-3 pt-3 border-t">
+                    <img src={imageItem.image} alt={imageItem.filename} class="max-w-full h-auto rounded" />
                   </div>
                 )}
               </>
@@ -483,9 +414,9 @@ export default component$(() => {
         ))}
       </div>
 
-      {classes.value.length === 0 && (
+      {images.value.length === 0 && (
         <div class="text-center py-8 text-gray-500">
-          No classes found. Click "Add Class" to create your first one.
+          No gallery images found. Click "Add Image" to create your first one.
         </div>
       )}
     </div>

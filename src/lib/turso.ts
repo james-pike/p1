@@ -30,10 +30,24 @@ export interface Banner {
 export interface Review {
   id?: number;
   name: string;
-  review: string; // Simplified to string, as database uses TEXT and Qwik can render strings
+  review: string;
   rating: number;
   date: string;
-  role: string;
+}
+
+export interface Class {
+  id?: number;
+  name: string;
+  description: string;
+  url: string;
+  image: string; // Base64-encoded image
+  isActive: number;
+}
+
+export interface GalleryImage {
+  id?: number;
+  image: string; // Base64-encoded image
+  filename: string;
 }
 
 interface EnvGetter {
@@ -77,15 +91,35 @@ async function initializeDatabase(client: Client) {
       )
     `);
 
-    // Create reviews table with 'review' column
+    // Create reviews table if it doesn't exist
     await client.execute(`
       CREATE TABLE IF NOT EXISTS reviews (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         review TEXT NOT NULL,
         rating INTEGER NOT NULL,
-        date TEXT NOT NULL,
-        role TEXT NOT NULL
+        date TEXT NOT NULL
+      )
+    `);
+
+    // Create classes table if it doesn't exist
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS classes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        url TEXT NOT NULL,
+        image TEXT NOT NULL,
+        isActive INTEGER NOT NULL
+      )
+    `);
+
+    // Create gallery_images table if it doesn't exist
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS gallery_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        image TEXT NOT NULL, -- Base64-encoded image
+        filename TEXT NOT NULL
       )
     `);
     console.log('Database tables initialized successfully');
@@ -228,14 +262,13 @@ export async function getReviews(client: Client): Promise<Review[]> {
     const res = await client.execute('SELECT * FROM reviews ORDER BY id ASC');
     const reviews = res.rows.map((r: any) => {
       const review = String(r.review ?? '');
-      console.log(`Fetched review ID ${r.id}: review = ${review}`); // Debug log
+      console.log(`Fetched review ID ${r.id}: review = ${review}`);
       return {
         id: Number(r.id),
         name: String(r.name ?? ''),
         review,
         rating: Number(r.rating ?? 0),
         date: String(r.date ?? ''),
-        role: String(r.role ?? ''),
       };
     });
     console.log(`Fetched ${reviews.length} reviews`);
@@ -251,16 +284,15 @@ export async function createReview(
   name: string,
   review: string,
   rating: number,
-  date: string,
-  role: string
+  date: string
 ): Promise<number> {
-  if (!name || !review || !date || !role) throw new Error('All review fields must not be empty');
+  if (!name || !review || !date) throw new Error('All review fields must not be empty');
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('Rating must be an integer between 1 and 5');
   try {
-    console.log(`Creating review with review: ${review}`); // Debug log
+    console.log(`Creating review with review: ${review}`);
     const res = await client.execute({
-      sql: 'INSERT INTO reviews (name, review, rating, date, role) VALUES (?, ?, ?, ?, ?)',
-      args: [name, review, rating, date, role],
+      sql: 'INSERT INTO reviews (name, review, rating, date) VALUES (?, ?, ?, ?)',
+      args: [name, review, rating, date],
     });
     if (res.lastInsertRowid === undefined) throw new Error('Failed to get last insert row ID');
     const rowIdNum = Number(res.lastInsertRowid);
@@ -279,18 +311,17 @@ export async function updateReview(
   name: string,
   review: string,
   rating: number,
-  date: string,
-  role: string
+  date: string
 ): Promise<void> {
   if (!id || !Number.isInteger(id)) throw new Error('Invalid review ID');
-  if (!name || !review || !date || !role) throw new Error('All review fields must not be empty');
+  if (!name || !review || !date) throw new Error('All review fields must not be empty');
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('Rating must be an integer between 1 and 5');
   try {
-    console.log(`Attempting to update review ID ${id} with:`, { name, review, rating, date, role }); // Detailed debug log
+    console.log(`Attempting to update review ID ${id} with:`, { name, review, rating, date });
     await client.execute('BEGIN TRANSACTION');
     const res = await client.execute({
-      sql: 'UPDATE reviews SET name = ?, review = ?, rating = ?, date = ?, role = ? WHERE id = ?',
-      args: [name, review, rating, date, role, id],
+      sql: 'UPDATE reviews SET name = ?, review = ?, rating = ?, date = ? WHERE id = ?',
+      args: [name, review, rating, date, id],
     });
     if (res.rowsAffected === 0) {
       console.warn(`No review found with ID: ${id}`);
@@ -298,7 +329,7 @@ export async function updateReview(
     }
     await client.execute('COMMIT');
     console.log(`Successfully updated review with ID: ${id}`);
-    // Verify update by fetching the updated review
+    // Verify update
     const verify = await client.execute({
       sql: 'SELECT * FROM reviews WHERE id = ?',
       args: [id],
@@ -326,5 +357,215 @@ export async function deleteReview(client: Client, id: number) {
   } catch (error) {
     console.error('Error deleting review:', error);
     throw new Error(`Failed to delete review: ${error}`);
+  }
+}
+
+// Class CRUD functions
+export async function getClasses(client: Client): Promise<Class[]> {
+  try {
+    const res = await client.execute('SELECT * FROM classes ORDER BY id ASC');
+    const classes = res.rows.map((r: any) => ({
+      id: Number(r.id),
+      name: String(r.name ?? ''),
+      description: String(r.description ?? ''),
+      url: String(r.url ?? ''),
+      image: String(r.image ?? ''),
+      isActive: Number(r.isActive ?? 0),
+    }));
+    console.log(`Fetched ${classes.length} classes`);
+    return classes;
+  } catch (error) {
+    console.error('Error fetching classes:', error);
+    throw new Error(`Failed to fetch classes: ${error}`);
+  }
+}
+
+export async function createClass(
+  client: Client,
+  name: string,
+  description: string,
+  url: string,
+  image: string,
+  isActive: number
+): Promise<number> {
+  if (!name || !description || !url || !image || isActive === undefined) {
+    throw new Error('All class fields must not be empty');
+  }
+  if (!Number.isInteger(isActive) || isActive < 0 || isActive > 1) {
+    throw new Error('isActive must be 0 or 1');
+  }
+  if (!image.startsWith('data:image/')) {
+    throw new Error('Image must be a valid base64-encoded image (data:image/*;base64,...)');
+  }
+  try {
+    console.log(`Creating class with name: ${name}, image length: ${image.length}`);
+    const res = await client.execute({
+      sql: 'INSERT INTO classes (name, description, url, image, isActive) VALUES (?, ?, ?, ?, ?)',
+      args: [name, description, url, image, isActive],
+    });
+    if (res.lastInsertRowid === undefined) throw new Error('Failed to get last insert row ID');
+    const rowIdNum = Number(res.lastInsertRowid);
+    if (!Number.isSafeInteger(rowIdNum)) throw new Error('lastInsertRowid is too large to convert safely to number');
+    console.log(`Created class with ID: ${rowIdNum}`);
+    return rowIdNum;
+  } catch (error) {
+    console.error('Error creating class:', error);
+    throw new Error(`Failed to create class: ${error}`);
+  }
+}
+
+export async function updateClass(
+  client: Client,
+  id: number,
+  name: string,
+  description: string,
+  url: string,
+  image: string,
+  isActive: number
+): Promise<void> {
+  if (!id || !Number.isInteger(id)) throw new Error('Invalid class ID');
+  if (!name || !description || !url || !image || isActive === undefined) {
+    throw new Error('All class fields must not be empty');
+  }
+  if (!Number.isInteger(isActive) || isActive < 0 || isActive > 1) {
+    throw new Error('isActive must be 0 or 1');
+  }
+  if (!image.startsWith('data:image/')) {
+    throw new Error('Image must be a valid base64-encoded image (data:image/*;base64,...)');
+  }
+  try {
+    console.log(`Attempting to update class ID ${id} with:`, { name, description, url, image: `base64(...${image.slice(-20)})`, isActive });
+    await client.execute('BEGIN TRANSACTION');
+    const res = await client.execute({
+      sql: 'UPDATE classes SET name = ?, description = ?, url = ?, image = ?, isActive = ? WHERE id = ?',
+      args: [name, description, url, image, isActive, id],
+    });
+    if (res.rowsAffected === 0) {
+      console.warn(`No class found with ID: ${id}`);
+      throw new Error(`No class found with ID: ${id}`);
+    }
+    await client.execute('COMMIT');
+    console.log(`Successfully updated class with ID: ${id}`);
+    // Verify update
+    const verify = await client.execute({
+      sql: 'SELECT * FROM classes WHERE id = ?',
+      args: [id],
+    });
+    if (verify.rows.length > 0) {
+      console.log(`Verified updated class ID ${id}:`, { ...verify.rows[0], image: `base64(...${String(verify.rows[0].image).slice(-20)})` });
+    } else {
+      console.warn(`Verification failed: No class found after update for ID: ${id}`);
+    }
+  } catch (error) {
+    await client.execute('ROLLBACK');
+    console.error('Error updating class:', error);
+    throw new Error(`Failed to update class: ${error}`);
+  }
+}
+
+export async function deleteClass(client: Client, id: number) {
+  try {
+    const res = await client.execute({
+      sql: 'DELETE FROM classes WHERE id = ?',
+      args: [id],
+    });
+    if (res.rowsAffected === 0) throw new Error(`No class found with ID: ${id}`);
+    console.log(`Deleted class with ID: ${id}`);
+  } catch (error) {
+    console.error('Error deleting class:', error);
+    throw new Error(`Failed to delete class: ${error}`);
+  }
+}
+
+// Gallery Image CRUD functions
+export async function getGalleryImages(client: Client): Promise<GalleryImage[]> {
+  try {
+    const res = await client.execute('SELECT * FROM gallery_images ORDER BY id ASC');
+    const images = res.rows.map((r: any) => ({
+      id: Number(r.id),
+      image: String(r.image ?? ''),
+      filename: String(r.filename ?? ''),
+    }));
+    console.log(`Fetched ${images.length} gallery images`);
+    return images;
+  } catch (error) {
+    console.error('Error fetching gallery images:', error);
+    throw new Error(`Failed to fetch gallery images: ${error}`);
+  }
+}
+
+export async function createGalleryImage(client: Client, image: string, filename: string): Promise<number> {
+  if (!image || !filename) {
+    throw new Error('Image and filename must not be empty');
+  }
+  if (!image.startsWith('data:image/')) {
+    throw new Error('Image must be a valid base64-encoded image (data:image/*;base64,...)');
+  }
+  try {
+    console.log(`Creating gallery image with filename: ${filename}, image length: ${image.length}`);
+    const res = await client.execute({
+      sql: 'INSERT INTO gallery_images (image, filename) VALUES (?, ?)',
+      args: [image, filename],
+    });
+    if (res.lastInsertRowid === undefined) throw new Error('Failed to get last insert row ID');
+    const rowIdNum = Number(res.lastInsertRowid);
+    if (!Number.isSafeInteger(rowIdNum)) throw new Error('lastInsertRowid is too large to convert safely to number');
+    console.log(`Created gallery image with ID: ${rowIdNum}`);
+    return rowIdNum;
+  } catch (error) {
+    console.error('Error creating gallery image:', error);
+    throw new Error(`Failed to create gallery image: ${error}`);
+  }
+}
+
+export async function updateGalleryImage(client: Client, id: number, image: string, filename: string): Promise<void> {
+  if (!id || !Number.isInteger(id)) throw new Error('Invalid gallery image ID');
+  if (!image || !filename) {
+    throw new Error('Image and filename must not be empty');
+  }
+  if (!image.startsWith('data:image/')) {
+    throw new Error('Image must be a valid base64-encoded image (data:image/*;base64,...)');
+  }
+  try {
+    console.log(`Attempting to update gallery image ID ${id} with:`, { filename, image: `base64(...${image.slice(-20)})` });
+    await client.execute('BEGIN TRANSACTION');
+    const res = await client.execute({
+      sql: 'UPDATE gallery_images SET image = ?, filename = ? WHERE id = ?',
+      args: [image, filename, id],
+    });
+    if (res.rowsAffected === 0) {
+      console.warn(`No gallery image found with ID: ${id}`);
+      throw new Error(`No gallery image found with ID: ${id}`);
+    }
+    await client.execute('COMMIT');
+    console.log(`Successfully updated gallery image with ID: ${id}`);
+    // Verify update
+    const verify = await client.execute({
+      sql: 'SELECT * FROM gallery_images WHERE id = ?',
+      args: [id],
+    });
+    if (verify.rows.length > 0) {
+      console.log(`Verified updated gallery image ID ${id}:`, { ...verify.rows[0], image: `base64(...${String(verify.rows[0].image).slice(-20)})` });
+    } else {
+      console.warn(`Verification failed: No gallery image found after update for ID: ${id}`);
+    }
+  } catch (error) {
+    await client.execute('ROLLBACK');
+    console.error('Error updating gallery image:', error);
+    throw new Error(`Failed to update gallery image: ${error}`);
+  }
+}
+
+export async function deleteGalleryImage(client: Client, id: number) {
+  try {
+    const res = await client.execute({
+      sql: 'DELETE FROM gallery_images WHERE id = ?',
+      args: [id],
+    });
+    if (res.rowsAffected === 0) throw new Error(`No gallery image found with ID: ${id}`);
+    console.log(`Deleted gallery image with ID: ${id}`);
+  } catch (error) {
+    console.error('Error deleting gallery image:', error);
+    throw new Error(`Failed to delete gallery image: ${error}`);
   }
 }
