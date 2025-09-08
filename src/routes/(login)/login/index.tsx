@@ -1,26 +1,27 @@
-// src/routes/login/index.tsx
+// /vercel/path0/src/routes/(login)/login/index.tsx
 import { component$, useSignal } from '@builder.io/qwik';
 import { routeLoader$, server$ } from '@builder.io/qwik-city';
-import { signIn, useSession } from '~/lib/auth';
+import { useSession, signIn } from '~/lib/auth';
 
-export const useSessionLoader = routeLoader$(async ({ redirect }) => {
-  const session = await useSession();
-  if (session.value?.user) {
+export const useSessionLoader = routeLoader$(async ({ redirect, resolveValue }) => {
+  const session = await resolveValue(useSession); // Correctly resolve useSession
+  if (session?.user) {
     throw redirect(302, '/gallery'); // Redirect authenticated users
   }
-  return null;
+  return null; // No session, allow access to login page
 });
 
 export default component$(() => {
-  const session = useSessionLoader();
   const error = useSignal('');
 
   const handleGoogleSignIn = server$(async () => {
     try {
       await signIn('google', { callbackUrl: '/gallery' });
+      return { success: true };
     } catch (err) {
       console.error('Google sign-in error:', err);
       error.value = 'Failed to sign in with Google';
+      return { success: false, error: err.message };
     }
   });
 
@@ -33,7 +34,7 @@ export default component$(() => {
         </div>
       )}
       <button
-        onClick$={handleGoogleSignIn}
+        onClick$={async () => await handleGoogleSignIn()}
         class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full"
       >
         Sign in with Google

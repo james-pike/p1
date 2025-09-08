@@ -1,6 +1,6 @@
 // src/routes/api/faqs/index.ts
 import type { RequestHandler } from '@builder.io/qwik-city';
-import { tursoClient, getFaqs, createFaq, updateFaq, deleteFaq, type Faq } from '~/lib/turso';
+import { tursoClient, getFaqs, createFaq, updateFaq, deleteFaq } from '~/lib/turso';
 
 // Helper function to trigger webhook
 const triggerWebhook = async (data: any) => {
