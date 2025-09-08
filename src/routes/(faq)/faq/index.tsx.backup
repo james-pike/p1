@@ -1,0 +1,183 @@
+import { component$, useSignal, $, useVisibleTask$ } from "@builder.io/qwik";
+
+export default component$(() => {
+  // Hardcoded FAQs
+  const faqs = [
+        { id: 5, question: "What is your studio like?", answer: "Our studio is located on a quiet street. To honour privacy and create a safe, focused environment, only participants and the facilitator are present in the studio during classes and workshops." },
+
+    { id: 2, question: "Who are your facilitators?", answer: "earthen vessels facilitators are skilled professionals. They possess a unique blend of empathy, communication skills, and emotional intelligence. They have a natural ability to create a safe and supportive environment where participants feel comfortable sharing their thoughts, feelings, and experiences." },
+   
+    { id: 6, question: "Do facilitators bring a spirit of reflection and presence?", answer: "At earthen vessels our facilitators bring meaningful experience working with clay. They bring a deep commitment to guiding others in discovering how the clay can awaken within them. Each facilitator holds space with care - for creative exploration, reflection, and personal insight - inviting a journey that is grounding and expansive through the process of clay work." },
+      //  { id: 3, question: "Is there parking?", answer: "We provide all the materials you need. Just wear clothes you don’t mind getting messy." },
+    { id: 4, question: "How long is each session?", answer: "Most classes run between 2–3 hours, depending on the workshop." },
+
+    { id: 7, question: "Do you offer private events?", answer: "Yes, we host private workshops and team events. Our next open house is in October!" },
+        { id: 1, question: "Can I keep what I makes?", answer: "Yes! During your workshop, you will create a unique clay piece. It will stay with us until the process of drying and firing in our kiln is completed. We will contact you to pick up your creation once the process is completed - usually 3-4 weeks." },
+
+  ];
+
+  // Split FAQ items into two columns
+  const leftColumn = faqs.filter((_, i) => i % 2 === 0);
+  const rightColumn = faqs.filter((_, i) => i % 2 === 1);
+
+  // Track which item is open
+  const openItems = useSignal<number | null>(null);
+
+  // Detect mobile for controlling open item behavior
+  const isMobile = useSignal(false);
+
+  useVisibleTask$(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    isMobile.value = mediaQuery.matches;
+
+    // Set default open item:
+    if (isMobile.value) {
+      openItems.value = faqs[0].id; // Always first FAQ on mobile
+    } else {
+      const randomFaq = faqs[Math.floor(Math.random() * faqs.length)];
+      openItems.value = randomFaq.id; // Random one on desktop
+    }
+
+    const handler = (e: MediaQueryListEvent) => {
+      isMobile.value = e.matches;
+      if (isMobile.value) {
+        openItems.value = faqs[0].id;
+      } else {
+        const randomFaq = faqs[Math.floor(Math.random() * faqs.length)];
+        openItems.value = randomFaq.id;
+      }
+    };
+
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  });
+
+  // Toggle FAQ item
+  const toggleItem = $((id: number) => {
+    if (openItems.value === id) {
+      openItems.value = null;
+    } else {
+      openItems.value = id;
+    }
+  });
+
+  return (
+    <section class="relative overflow-hidden py-12 md:py-16">
+      <div class="relative max-w-5xl mx-auto px-5 sm:px-6">
+        {/* Section Header */}
+        <div class="text-center mb-12">
+          <h2 class="!text-5xl md:text-6xl xdxd font-bold mb-6">
+            <span class="bg-gradient-to-r from-primary-600 via-tertiary-600 to-secondary-800 bg-clip-text text-transparent">
+              Frequently Asked Questions
+            </span>
+          </h2>
+        </div>
+
+        {/* FAQ Accordion */}
+        <div class="flex flex-col md:flex-row md:gap-8">
+          {/* Left Column */}
+          <div class="flex-1 flex flex-col gap-4">
+            {leftColumn.map((item) => (
+              <div key={item.id} class="group">
+                <div class="bg-gradient-to-br from-white/50 via-primary-50/30 to-secondary-50/30 dark:from-gray-800/90 rounded-2xl border shadow-lg hover:shadow-xl transition-all duration-300">
+                  <button
+                    onClick$={() => toggleItem(item.id)}
+                    class="w-full px-6 py-5 flex items-center justify-between text-left transition-all"
+                    aria-expanded={openItems.value === item.id}
+                    aria-controls={`faq-answer-${item.id}`}
+                  >
+                    <div class="flex items-center gap-3">
+                      <img src="/images/logo2-cropped.svg" alt="FAQ Icon" class="w-5 h-5 mr-2 md:w-[25px] md:h-[25px]" />
+                      <h3 class="!text-xl md:!text-xl font-semibold text-secondary-900 dark:text-secondary-100">
+                        {item.question}
+                      </h3>
+                    </div>
+                    <div
+                      class={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                        openItems.value === item.id
+                          ? "bg-primary-600 text-white"
+                          : "bg-primary-100 text-secondary-800"
+                      }`}
+                    >
+                      <svg
+                        class={`w-5 h-5 transition-transform ${
+                          openItems.value === item.id ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+                  <div
+                    id={`faq-answer-${item.id}`}
+                    class={`overflow-hidden transition-all duration-300 ${
+                      openItems.value === item.id ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                    }`}
+                  >
+                    <div class="px-6 pb-5">
+                      <p class="text-primary-700 dark:text-primary-300">{item.answer}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Right Column */}
+          <div class="flex-1 flex flex-col gap-4 mt-4 md:mt-0">
+            {rightColumn.map((item) => (
+              <div key={item.id} class="group">
+                <div class="bg-gradient-to-br from-white/50 via-primary-50/30 to-secondary-50/30 dark:from-gray-800/90 rounded-2xl border shadow-lg hover:shadow-xl transition-all duration-300">
+                  <button
+                    onClick$={() => toggleItem(item.id)}
+                    class="w-full px-6 py-5 flex items-center justify-between text-left transition-all"
+                    aria-expanded={openItems.value === item.id}
+                    aria-controls={`faq-answer-${item.id}`}
+                  >
+                    <div class="flex items-center gap-3">
+                      <img src="/images/logo2-cropped.svg" alt="FAQ Icon" class="w-5 h-5 mr-2 md:w-[25px] md:h-[25px]" />
+                      <h3 class="!text-xl md:!text-xl font-semibold text-secondary-900 dark:text-secondary-100">
+                        {item.question}
+                      </h3>
+                    </div>
+                    <div
+                      class={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                        openItems.value === item.id
+                          ? "bg-primary-600 text-white"
+                          : "bg-primary-100 text-secondary-800"
+                      }`}
+                    >
+                      <svg
+                        class={`w-5 h-5 transition-transform ${
+                          openItems.value === item.id ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+                  <div
+                    id={`faq-answer-${item.id}`}
+                    class={`overflow-hidden transition-all duration-300 ${
+                      openItems.value === item.id ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                    }`}
+                  >
+                    <div class="px-6 pb-5">
+                      <p class="text-primary-700 dark:text-primary-300">{item.answer}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+});
