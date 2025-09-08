@@ -40,11 +40,12 @@
     "typescript-plugin-css-modules": "latest",
     "undici": "*",
     "vite": "7.1.0",
-    "vite-tsconfig-paths": "^4.2.1"
-  },
-  "dependencies": {
+    "vite-tsconfig-paths": "^4.2.1",
     "@auth/qwik": "^0.8.0",
     "@libsql/client": "^0.15.14",
     "next-auth": "^4.24.11"
+  },
+  "dependencies": {
+  
   }
 }
