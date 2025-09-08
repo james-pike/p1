@@ -23,7 +23,7 @@ const triggerWebhook = async (data: any) => {
 export const onGet: RequestHandler = async (event) => {
   try {
     const client = tursoClient(event);
-    const faqs = await getFaqs(client);
+    const faqs = await getFaqs(await client);
     return Response.json(faqs);
   } catch (err) {
     console.error('Error fetching FAQs:', err);
@@ -40,7 +40,7 @@ export const onPost: RequestHandler = async (event) => {
 
     if (!question || !answer) return;
 
-    const newId = await createFaq(client, question, answer);
+    const newId = await createFaq(await client, question, answer);
 
     // Fire-and-forget webhook
     triggerWebhook({ 
@@ -64,7 +64,7 @@ export const onPut: RequestHandler = async (event) => {
 
     if (!id || !question || !answer) return;
 
-    await updateFaq(client, id, question, answer);
+    await updateFaq(await client, id, question, answer);
 
     // Fire-and-forget webhook
     triggerWebhook({ 
@@ -88,7 +88,7 @@ export const onDelete: RequestHandler = async (event) => {
 
     if (!id) return;
 
-    await deleteFaq(client, id);
+    await deleteFaq(await client, id);
 
     // Fire-and-forget webhook
     triggerWebhook({ 

@@ -26,6 +26,7 @@
     "@builder.io/qwik": "^1.16.0",
     "@builder.io/qwik-city": "^1.16.0",
     "@eslint/js": "latest",
+    "@qwikest/icons": "^0.0.13",
     "@types/node": "20.19.0",
     "autoprefixer": "^10.x",
     "eslint": "9.32.0",
@@ -39,10 +40,9 @@
     "typescript-plugin-css-modules": "latest",
     "undici": "*",
     "vite": "7.1.0",
-    "vite-tsconfig-paths": "^4.2.1",
-        "@qwikest/icons": "^0.0.13"
-
+    "vite-tsconfig-paths": "^4.2.1"
   },
   "dependencies": {
+    "@libsql/client": "^0.15.14"
   }
 }

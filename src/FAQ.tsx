@@ -1,15 +1,15 @@
 // src/components/Faqs.tsx
-import { component$, useSignal, useVisibleTask$, $, useStore, PropFunction } from '@builder.io/qwik';
-import { server$ } from '@builder.io/qwik-city';
-import { type Faq } from '~/lib/turso';
+import { component$, useSignal, useVisibleTask$, $, useStore } from '@builder.io/qwik';
+import { routeLoader$, server$ } from '@builder.io/qwik-city';
+import { tursoClient, getFaqs, type Faq } from '~/lib/turso';
 
-// Define props interface
-interface FaqsProps {
-  faqsData: Faq[];
-}
+export const useFaqsLoader = routeLoader$(async (event) => {
+  const client = tursoClient(event);
+  return await getFaqs(await client);
+});
 
 // Server actions for CRUD operations
-export const createFaqAction = server$(async function (question: string, answer: string) {
+export const createFaqAction = server$(async function(question: string, answer: string) {
   console.log('createFaqAction called with:', { question, answer });
   const response = await fetch(`${this.url.origin}/api/faqs`, {
     method: 'POST',
@@ -20,7 +20,7 @@ export const createFaqAction = server$(async function (question: string, answer:
   return response.ok;
 });
 
-export const updateFaqAction = server$(async function (id: number, question: string, answer: string) {
+export const updateFaqAction = server$(async function(id: number, question: string, answer: string) {
   console.log('updateFaqAction called with:', { id, question, answer });
   const response = await fetch(`${this.url.origin}/api/faqs`, {
     method: 'PUT',
@@ -32,7 +32,7 @@ export const updateFaqAction = server$(async function (id: number, question: str
   return response.ok;
 });
 
-export const deleteFaqAction = server$(async function (id: number) {
+export const deleteFaqAction = server$(async function(id: number) {
   console.log('deleteFaqAction called with:', { id });
   const response = await fetch(`${this.url.origin}/api/faqs`, {
     method: 'DELETE',
@@ -43,7 +43,8 @@ export const deleteFaqAction = server$(async function (id: number) {
   return response.ok;
 });
 
-export default component$<FaqsProps>(({ faqsData }) => {
+export default component$(() => {
+  const loaderData = useFaqsLoader();
   const faqs = useSignal<Faq[]>([]);
   const openItem = useSignal<number | null>(null);
   const editingItem = useSignal<number | null>(null);
@@ -60,7 +61,7 @@ export default component$<FaqsProps>(({ faqsData }) => {
   });
 
   useVisibleTask$(() => {
-    faqs.value = faqsData;
+    faqs.value = loaderData.value;
     if (faqs.value.length > 0) openItem.value = faqs.value[0].id ?? null;
   });
 
