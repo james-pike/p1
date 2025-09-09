@@ -1,6 +1,6 @@
 // ~/components/ClassesAdmin.tsx
 import { component$, useSignal, $ } from '@builder.io/qwik';
-import { Form, useNavigate } from '@builder.io/qwik-city';
+import { Form} from '@builder.io/qwik-city';
 
 type Class = {
   id: number;
@@ -18,7 +18,6 @@ interface ClassesAdminProps {
 export default component$<ClassesAdminProps>(({ classesData }) => {
   const showAddForm = useSignal(false);
   const editingClass = useSignal<Class | null>(null);
-  const nav = useNavigate();
 
   // Form signals
   const name = useSignal('');

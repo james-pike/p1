@@ -1,14 +1,15 @@
-// /vercel/path0/src/routes/(login)/login/index.tsx
+// src/routes/(login)/login/index.tsx
 import { component$, useSignal } from '@builder.io/qwik';
 import { routeLoader$, server$ } from '@builder.io/qwik-city';
-import { useSession, signIn } from '~/lib/auth';
+import type { Session } from 'next-auth';
+import { signIn } from 'next-auth/react';
 
-export const useSessionLoader = routeLoader$(async ({ redirect, resolveValue }) => {
-  const session = await resolveValue(useSession); // Correctly resolve useSession
-  if (session?.user) {
-    throw redirect(302, '/gallery'); // Redirect authenticated users
+export const useSessionLoader = routeLoader$(async ({ sharedMap }) => {
+  const session = sharedMap.get('session') as Session | null;
+  if (!session || !session.user) {
+    return null;
   }
-  return null; // No session, allow access to login page
+  throw new Response(null, { status: 302, headers: { Location: '/gallery' } });
 });
 
 export default component$(() => {
@@ -19,9 +20,10 @@ export default component$(() => {
       await signIn('google', { callbackUrl: '/gallery' });
       return { success: true };
     } catch (err) {
-      console.error('Google sign-in error:', err);
+      const signInError = err as Error;
+      console.error('Google sign-in error:', signInError);
       error.value = 'Failed to sign in with Google';
-      return { success: false, error: err.message };
+      return { success: false, error: signInError.message };
     }
   });
 

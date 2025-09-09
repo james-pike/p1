@@ -21,44 +21,31 @@ errorOnDuplicatesPkgDeps(devDependencies, dependencies);
 export default defineConfig(({ command, mode }): UserConfig => {
   return {
     plugins: [qwikCity(), qwikVite(), tsconfigPaths({ root: '.' })],
-
     optimizeDeps: {
-      // Prevent dev pre-bundling for Node-only packages
       exclude: ['@libsql/client'],
     },
-
     ssr: {
-      // Externalize Node-only packages so Rollup doesn't try to bundle them
       external: ['@libsql/client'],
     },
-
     server: {
       headers: {
-        'Cache-Control': 'public, max-age=0', // dev: no cache
+        'Cache-Control': 'public, max-age=0',
       },
     },
-
     preview: {
       headers: {
-        'Cache-Control': 'public, max-age=600', // preview: short cache
+        'Cache-Control': 'public, max-age=600',
       },
     },
   };
 });
 
-// ---------------------
-// Utils
-// ---------------------
 function errorOnDuplicatesPkgDeps(devDependencies: PkgDep, dependencies: PkgDep) {
   const duplicateDeps = Object.keys(devDependencies).filter(dep => dependencies[dep]);
-
-  // Check for qwik packages in dependencies
   const qwikPkg = Object.keys(dependencies).filter(dep => /qwik/i.test(dep));
-
   if (qwikPkg.length > 0) {
     throw new Error(`Move qwik packages to devDependencies: ${qwikPkg.join(', ')}`);
   }
-
   if (duplicateDeps.length > 0) {
     throw new Error(`
       Duplicate dependencies detected: ${duplicateDeps.join(', ')}

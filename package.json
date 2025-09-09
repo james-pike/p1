@@ -22,30 +22,30 @@
     "start": "vite --open --mode ssr",
     "qwik": "qwik"
   },
+  "dependencies": {
+    "@auth/core": "0.40.0",
+    "@libsql/client": "0.15.14",
+    "next-auth": "4.24.8"
+  },
   "devDependencies": {
-    "@builder.io/qwik": "^1.16.0",
-    "@builder.io/qwik-city": "^1.16.0",
-    "@eslint/js": "latest",
-    "@qwikest/icons": "^0.0.13",
+    "@auth/qwik": "0.8.0",
+    "@builder.io/qwik": "1.16.0",
+    "@builder.io/qwik-city": "1.16.0",
+    "@eslint/js": "9.32.0",
+    "@qwikest/icons": "0.0.13",
     "@types/node": "20.19.0",
-    "autoprefixer": "^10.x",
+    "autoprefixer": "10.4.21",
     "eslint": "9.32.0",
-    "eslint-plugin-qwik": "^1.16.0",
+    "eslint-plugin-qwik": "1.16.0",
     "globals": "16.3.0",
-    "postcss": "^8.x",
+    "postcss": "8.4.47",
     "prettier": "3.6.2",
-    "tailwindcss": "^3.x",
+    "tailwindcss": "3.4.14",
     "typescript": "5.4.5",
     "typescript-eslint": "8.38.0",
-    "typescript-plugin-css-modules": "latest",
-    "undici": "*",
+    "typescript-plugin-css-modules": "5.1.0",
+    "undici": "6.19.8",
     "vite": "7.1.0",
-    "vite-tsconfig-paths": "^4.2.1",
-    "@auth/qwik": "^0.8.0",
-    "@libsql/client": "^0.15.14",
-    "next-auth": "^4.24.11"
-  },
-  "dependencies": {
-  
+    "vite-tsconfig-paths": "4.2.1"
   }
 }

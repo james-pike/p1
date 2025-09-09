@@ -50,6 +50,12 @@ export interface GalleryImage {
   filename: string;
 }
 
+export interface User {
+  id?: number;
+  email: string;
+  name?: string;
+}
+
 interface EnvGetter {
   get: (key: string) => string | undefined;
 }
@@ -122,10 +128,58 @@ async function initializeDatabase(client: Client) {
         filename TEXT NOT NULL
       )
     `);
+
+    // Create users table if it doesn't exist
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT
+      )
+    `);
+
     console.log('Database tables initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
     throw new Error(`Database initialization failed: ${error}`);
+  }
+}
+
+// User CRUD functions
+export async function createUser(client: Client, email: string, name?: string): Promise<number> {
+  if (!email) throw new Error('Email must not be empty');
+  try {
+    const res = await client.execute({
+      sql: 'INSERT INTO users (email, name) VALUES (?, ?)',
+      args: [email, name || null],
+    });
+    if (res.lastInsertRowid === undefined) throw new Error('Failed to get last insert row ID');
+    const rowIdNum = Number(res.lastInsertRowid);
+    if (!Number.isSafeInteger(rowIdNum)) throw new Error('lastInsertRowid is too large to convert safely to number');
+    console.log(`Created user with ID: ${rowIdNum}, email: ${email}`);
+    return rowIdNum;
+  } catch (error) {
+    console.error('Error creating user:', error);
+    throw new Error(`Failed to create user: ${error}`);
+  }
+}
+
+export async function getUserByEmail(client: Client, email: string): Promise<User | null> {
+  if (!email) throw new Error('Email must not be empty');
+  try {
+    const res = await client.execute({
+      sql: 'SELECT * FROM users WHERE email = ?',
+      args: [email],
+    });
+    if (res.rows.length === 0) return null;
+    return {
+      id: Number(res.rows[0].id),
+      email: String(res.rows[0].email),
+      name: res.rows[0].name ? String(res.rows[0].name) : undefined,
+    };
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    throw new Error(`Failed to fetch user: ${error}`);
   }
 }
 
