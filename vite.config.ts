@@ -4,7 +4,8 @@
  */
 import { defineConfig, type UserConfig } from 'vite';
 import { qwikVite } from '@builder.io/qwik/optimizer';
-import { qwikCity } from '@builder.io/qwik-city/vite';
+import { qwikCity, extendConfig } from '@builder.io/qwik-city/vite';
+import { vercelEdgeAdapter } from '@builder.io/qwik-city/adapters/vercel-edge/vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import pkg from './package.json';
 
@@ -15,28 +16,40 @@ const { dependencies = {}, devDependencies = {} } = pkg as any as {
   [key: string]: unknown;
 };
 
-// Throw errors for duplicate dependencies
 errorOnDuplicatesPkgDeps(devDependencies, dependencies);
 
-export default defineConfig(({ command, mode }): UserConfig => {
+// Base configuration
+const baseConfig = defineConfig({
+  plugins: [qwikCity(), qwikVite(), tsconfigPaths({ root: '.' })],
+  optimizeDeps: {
+    exclude: ['@libsql/client'],
+  },
+  ssr: {
+    external: ['@libsql/client'],
+  },
+  server: {
+    headers: {
+      'Cache-Control': 'public, max-age=0',
+    },
+  },
+  preview: {
+    headers: {
+      'Cache-Control': 'public, max-age=600',
+    },
+  },
+});
+
+// Extend for Vercel Edge
+export default extendConfig(baseConfig, () => {
   return {
-    plugins: [qwikCity(), qwikVite(), tsconfigPaths({ root: '.' })],
-    optimizeDeps: {
-      exclude: ['@libsql/client'],
-    },
-    ssr: {
-      external: ['@libsql/client'],
-    },
-    server: {
-      headers: {
-        'Cache-Control': 'public, max-age=0',
+    build: {
+      ssr: true,
+      rollupOptions: {
+        input: ['src/entry.vercel-edge.tsx', '@qwik-city-plan'],
       },
+      outDir: '.vercel/output/functions/_qwik-city.func',
     },
-    preview: {
-      headers: {
-        'Cache-Control': 'public, max-age=600',
-      },
-    },
+    plugins: [vercelEdgeAdapter()],
   };
 });
 
